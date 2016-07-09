@@ -13,22 +13,28 @@ namespace MongoDb_POC
     {
         static void Main(string[] args)
         {
-            int qtdLinhas = 0;
+            while (true)
+            {
+                         
+                int qtdLinhas = 0;
 
-            Console.WriteLine("Digite a Qtd de linhas a serem inserida no MongoDb");
-            qtdLinhas = int.Parse(Console.ReadLine());
+                Console.WriteLine("\nDigite a Qtd de linhas a serem inserida no MongoDb");
+                qtdLinhas = int.Parse(Console.ReadLine());
 
-            var ListaDeLogs = CriarLogAssinaturas(qtdLinhas);
+                var ListaDeLogs = CriarLogAssinaturas(qtdLinhas);
 
-            Console.WriteLine("Inicio do processamento...");
+                var dataInicio = DateTime.Now;
+                Console.WriteLine(string.Format("Inicio do processamento. {0}", dataInicio ));
+                                               
+                CriarLogMongoDb(ListaDeLogs);
 
-            CriarLogMongoDb(ListaDeLogs);
+                var dataFim = DateTime.Now;
+                Console.WriteLine(string.Format("Final do processamento. {0}", dataFim));
 
-            //ListaDeLogs.AsParallel().ForAll(CriarLogMongoDb);
+                Console.Write("Tempo de processamento:{0}", (dataFim - dataInicio));
 
-            Console.WriteLine("Final do processamento.");
-
-            Console.ReadKey();
+                Console.ReadKey();
+            }
 
         }
 
@@ -41,7 +47,7 @@ namespace MongoDb_POC
             {
                 LogAssinatura logAssinatura = new LogAssinatura
                 {
-                    Detalhe = "fasfjahfakshfkalshflaçkshflaçkshfçlakshflaksfhlaçkshflçakshfçlaksflakshflkashflçkashflçkashflçkashflçkahsf" + Guid.NewGuid(),
+                    Detalhe = "fasfjahfakshfkalshflaçkshflaçkshfçlakshflaksfhlaçkshflçakshfçlaksflakshflkashflçkashflçkashflçkashflçkahsf",
                     Data = DateTime.Now,
                     DataAssinatura = DateTime.Now,
                     Evento = EventoEnum.Informacao,
@@ -65,14 +71,11 @@ namespace MongoDb_POC
             var dataBase = cliente.GetDatabase("local");
 
             var colecao = dataBase.GetCollection<LogAssinatura>("LogAssinatura");
-            
-            foreach (var item in LogAssinatura)
-            {
-                colecao.InsertOneAsync(item);
-            }
 
-
-
+            LogAssinatura.AsParallel().ForAll(itemassinatura => {
+                colecao.InsertOne(itemassinatura);
+            });
+                  
         }
         
     }
