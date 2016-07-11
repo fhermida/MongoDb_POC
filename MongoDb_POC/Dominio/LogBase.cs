@@ -9,8 +9,8 @@ using MongoDB.Bson;
 namespace MongoDb_POC.Dominio
 {
     public abstract class LogBase
-    {
-        private ObjectId id;
+    {                       
+          
         private string detalhe;
         private DateTime data;
         private EventoEnum evento;
@@ -22,12 +22,8 @@ namespace MongoDb_POC.Dominio
             this.evento     = EventoEnum.Informacao;
         }
 
-
-        public ObjectId Id
-        {
-            get { return id;}
-            set { id = value; }
-        }
+        public ObjectId _id { get; set; }
+                 
         public string Detalhe
         {
             get { return detalhe; }
