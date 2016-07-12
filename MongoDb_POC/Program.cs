@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using MongoDb_POC.Dominio;
 using MongoDB.Driver;
+using MongoDB.Driver.Builders;
 
 
 namespace MongoDb_POC
@@ -15,19 +17,45 @@ namespace MongoDb_POC
         {
             while (true)
             {
-                         
-                int qtdLinhas = 0;
-
+                
                 Console.WriteLine("\nDigite a Qtd de linhas a serem inseridas no MongoDb");
-                qtdLinhas = int.Parse(Console.ReadLine());
+                var qtdLinhas = int.Parse(Console.ReadLine());
 
-                var ListaDeLogs = CriarLogAssinaturas(qtdLinhas);
+                Console.WriteLine("\nDigite o Id do canal");
+                var idCanal = int.Parse(Console.ReadLine());
+
+                var ListaDeLogs = CriarLogAssinaturas(qtdLinhas, idCanal);
+
+                Console.WriteLine("\nDigite o tipo de execução: a=Async/s=sync/sl=sync lote/al=async lote");
+                var tipoExecucao = Console.ReadLine();
 
                 var dataInicio = DateTime.Now;
                 Console.WriteLine("Inicio do processamento. {0}", dataInicio);
 
-                //CriarLogMongoDb(ListaDeLogs);
-                CriarLogMongoDbOneAsync(ListaDeLogs);
+                switch (tipoExecucao.ToLower())
+                {
+                    case "s":
+                        CriarLogMongoDb(ListaDeLogs);
+                        break;
+
+                    case "a":
+                        CriarLogMongoDbOneAsync(ListaDeLogs);
+                        break;
+
+                    case "sl":
+                        CriarLogMongoDbLote(ListaDeLogs);
+                        break;
+
+                    case "al":
+                        CriarLogMongoDbOneAsyncLote(ListaDeLogs);
+                        break;
+
+                    default:
+                    {
+                        Console.WriteLine("\nOpção Inválida! ");
+                        continue;
+                    }
+                }
 
                 var dataFim = DateTime.Now;
                 Console.WriteLine("Final do processamento. {0}", dataFim);
@@ -58,7 +86,7 @@ namespace MongoDb_POC
         }
 
 
-        public static IEnumerable<LogAssinatura> CriarLogAssinaturas(int qtdLinhas)
+        public static IEnumerable<LogAssinatura> CriarLogAssinaturas(int qtdLinhas, int idCanal)
         {
             IList<LogAssinatura> listaLogAssinaturas = new List<LogAssinatura>();
 
@@ -71,7 +99,7 @@ namespace MongoDb_POC
                     DataAssinatura = DateTime.Now,
                     Evento = EventoEnum.Informacao,
                     IdAssinatura = 12345678912,
-                    IdCanal = 75,
+                    IdCanal = idCanal,
                     IdUsuario = 1212,
                 };
 
@@ -102,26 +130,46 @@ namespace MongoDb_POC
                   
         }
 
-        public static void CriarLogMongoDbOneAsync(IEnumerable<LogAssinatura> LogAssinatura)
+
+        public static void CriarLogMongoDbLote(IEnumerable<LogAssinatura> LogAssinatura)
         {
             var dataBase = CriarConexaoMongo();
 
             var colecao = dataBase.GetCollection<LogAssinatura>("LogAssinatura");
 
-            LogAssinatura.AsParallel().ForAll( async itemassinatura =>
+             colecao.InsertMany(LogAssinatura);
+            
+        }
+
+        public static async void CriarLogMongoDbOneAsync(IEnumerable<LogAssinatura> LogAssinatura)
+        {
+            var dataBase = CriarConexaoMongo();
+
+            var colecao = dataBase.GetCollection<LogAssinatura>("LogAssinatura");
+
+            foreach (var item in LogAssinatura)
             {
-              await colecao.InsertOneAsync(itemassinatura);
-            });
+              await colecao.InsertOneAsync(item);
+            }
+        }
+
+        public static async void CriarLogMongoDbOneAsyncLote(IEnumerable<LogAssinatura> LogAssinatura)
+        {
+            var dataBase = CriarConexaoMongo();
+
+            var colecao = dataBase.GetCollection<LogAssinatura>("LogAssinatura");
+
+            await colecao.InsertManyAsync(LogAssinatura);
         }
 
         public static void ListarColecao()
         {
             var dataBase = CriarConexaoMongo();
-            var filter = Builders<LogAssinatura>.Filter.Exists(p => p.IdCanal);
-            var colecao = dataBase.GetCollection<LogAssinatura>("LogAssinatura").Find(filter).ToList();
+            var query = Builders<LogAssinatura>.Filter.Exists(p => p.IdCanal);
+            var colecao = dataBase.GetCollection<LogAssinatura>("LogAssinatura").Find(query);
 
             int i = 0;
-            foreach (var item in colecao)
+            foreach (var item in colecao.ToList())
             {
                 Console.Write(string.Concat(item._id, "\n"));
                 i++;
